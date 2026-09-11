@@ -9,11 +9,15 @@ const shadowGeo = new THREE.CircleGeometry(1, 16);
 const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false });
 
 export class Enemy {
-  constructor(scene, type, x, z, { guardOf = null } = {}) {
+  constructor(scene, type, x, z, { guardOf = null, ephemeral = false, harmless = false, scale = 1, fleeFrom = null } = {}) {
     this.scene = scene;
     this.type = type;
     this.cfg = ENEMY_TYPES[type];
     this.guardOf = guardOf;
+    this.ephemeral = ephemeral;   // never respawns (boss pups)
+    this.harmless = harmless;     // just runs away and vanishes
+    this.fleeFrom = fleeFrom;
+    this.lifetime = 0;
     this.home = { x, z };
     this.radius = this.cfg.radius;
     this.hp = this.cfg.hp;
@@ -42,6 +46,7 @@ export class Enemy {
     this.legs = [];
     if (type === 'wolf') this._buildWolf(); else this._buildBear();
     this._buildHealthBar();
+    this.group.scale.setScalar(scale);
     scene.add(this.group);
   }
 
@@ -55,6 +60,7 @@ export class Enemy {
   update(dt, ctx) {
     this.time += dt;
     if (this.dead) { this._tickDying(dt); return; }
+    if (this.harmless) { this._tickHarmless(dt, ctx); return; }
 
     const p = this.group.position;
     if (this.attackCd > 0) this.attackCd -= dt;
@@ -181,6 +187,25 @@ export class Enemy {
     ctx.world.resolve(p, this.radius);
 
     this._animate(dt);
+  }
+
+  // Pups: scamper away from a point, hop about, then pop away in a puff.
+  _tickHarmless(dt, ctx) {
+    this.lifetime += dt;
+    const p = this.group.position;
+    const from = this.fleeFrom ?? { x: 0, z: 0 };
+    let dx = p.x - from.x, dz = p.z - from.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l; dz /= l;
+    dx += Math.sin(this.time * 5 + this.facing) * 0.4;
+    const speed = 8;
+    p.x += dx * speed * dt; p.z += dz * speed * dt;
+    this._face(dx, dz, dt, 12);
+    ctx.world.resolve(p, this.radius * 0.5);
+    this.moveBlend = 1;
+    this.group.position.y = Math.abs(Math.sin(this.time * 12)) * 0.4;
+    this._animate(dt);
+    if (this.lifetime > 3.2) { this.dead = true; this.removeMe = true; this.group.visible = false; ctx.effects.puff(p, 0xd8d0ee, 8); }
   }
 
   _face(dx, dz, dt, lambda) {

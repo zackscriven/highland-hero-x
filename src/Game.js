@@ -16,6 +16,7 @@ import { Enemies } from './systems/Enemies.js';
 import { Hazards } from './systems/Hazards.js';
 import { Pickups } from './systems/Pickups.js';
 import { Coop } from './systems/Coop.js';
+import { Boss } from './entities/Boss.js';
 import { getSkin } from './data/skins.js';
 import { loadConfig, saveConfig, isSkinUnlocked } from './core/save.js';
 import { ZONES } from './data/zones.js';
@@ -128,6 +129,7 @@ export class Game {
 
   startRun(config) {
     this.lastConfig = config;
+    this.runId = (this.runId ?? 0) + 1;
     this._clearPreviewCows();
     this._teardownRun();
     this.world.setVividness(0);
@@ -166,10 +168,14 @@ export class Game {
       abilities: new AbilityController(cow, { effects: this.effects, hud: this.hud, world: this.world }),
     }));
     this.enemies = new Enemies({ scene: this.engine.scene, world: this.world, effects: this.effects, quest: this.quest });
-    this.enemies.onDeath = (e) => { if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
     this.hazards = new Hazards({ world: this.world, effects: this.effects, hud: this.hud });
     this.pickups = new Pickups({ scene: this.engine.scene, world: this.world, effects: this.effects, hud: this.hud });
     this.coop = new Coop({ hud: this.hud, effects: this.effects });
+    this.boss = new Boss(this.engine.scene, this.world.arena, { players: this.cows.length });
+    this.boss.onEvent = (type, data) => this._onBossEvent(type, data);
+    this.stats = { kos: 0, downs: 0 };
+    this.enemies.onDeath = (e) => { this.stats.kos++; if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
+    this.ending = null;
     this.menus.hide();
     this.keyboard.clear();
     this.state = 'playing';
@@ -188,6 +194,8 @@ export class Game {
     this.pickups?.dispose();
     this.pickups = null;
     this.hazards = null;
+    this.boss?.dispose();
+    this.boss = null;
     this.hud.clear();
   }
 
@@ -216,9 +224,78 @@ export class Game {
     if (this.state !== 'playing') return;
     this.state = 'won';
     this.world.setVividness(1);
-    this.world.setRestoration(1);
-    for (const c of this.cows) this.effects.burst(c.position, 0xffe08a, { count: 60, speed: 8, life: 1.6, up: 9 });
-    setTimeout(() => this.menus.showWin({ players: this.cows.length }), 1400);
+    this.ending = { t: 0, shown: false };
+    for (const pl of this.players) pl.abilities.cancelAll();
+    for (const c of this.cows) this.hud.toast(c.index, 'The grasslands are saved! 🌈', '#ffe08a');
+  }
+
+  _tickEnding(dt) {
+    const e = this.ending;
+    if (!e) return;
+    e.t += dt;
+    // The world blooms back to life over three seconds, with fireworks.
+    this.world.setRestoration(Math.min(1, e.t / 3));
+    if (e.t < 5 && Math.random() < dt * 6) {
+      const c = this.cows[Math.floor(Math.random() * this.cows.length)];
+      const a = Math.random() * Math.PI * 2, d = 4 + Math.random() * 10;
+      const colors = [0xffe08a, 0xff7ad9, 0x66e0d8, 0x8ad865, 0xb28dff];
+      this.effects.burst({ x: c.x + Math.cos(a) * d, z: c.z + Math.sin(a) * d, y: 4 }, colors[Math.floor(Math.random() * colors.length)], { count: 24, speed: 6, life: 1.4, up: 6, gravity: 4 });
+    }
+    for (const vp of this.viewports) if (e.t < 0.5) vp.shake = 0.3;
+    if (e.t > 4.2 && !e.shown) {
+      e.shown = true;
+      this.menus.showWin({ players: this.cows.length, stats: { time: this.runTime, charms: this.quest?.count ?? 7, kos: this.stats.kos, downs: this.stats.downs, names: this.cows.map((c) => c.name) } });
+    }
+  }
+
+  _onBossEvent(type, data) {
+    const toastAll = (msg, color) => { for (const c of this.cows) this.hud.toast(c.index, msg, color); };
+    const shakeAll = (n) => { for (const vp of this.viewports) vp.shake = Math.max(vp.shake, n); };
+    switch (type) {
+      case 'wake':
+        toastAll(`${NAMES.boss} awakens…`, '#d8c8ff');
+        shakeAll(0.5);
+        this.hud.setBoss({ name: NAMES.boss, fraction: 1 });
+        break;
+      case 'fightStart':
+        toastAll('GRRRRR! Three heads, one bad mood.', '#ff9c9c');
+        shakeAll(0.8);
+        this.effects.ring(this.boss.position, 0xb28dff, { radius: 14, duration: 0.9, y: 1 });
+        break;
+      case 'telegraph':
+        this.effects.ring(this.boss.position, 0xffe08a, { radius: 6, duration: 0.8, y: 0.6 });
+        break;
+      case 'pounce':
+        shakeAll(0.4);
+        break;
+      case 'recover':
+        toastAll('It stumbled — hit it now! ✨', '#8ff6ff');
+        break;
+      case 'howl':
+        toastAll('AWOOOO! Wolves are coming!', '#d8c8ff');
+        shakeAll(0.9);
+        this.effects.ring(this.boss.position, 0xd8c8ff, { radius: 18, duration: 1.2, y: 2 });
+        this.enemies.spawnPups(this.world.arena, data.pups);
+        break;
+      case 'enraged':
+        toastAll('The wolf is furious! Watch out!', '#ff6b6b');
+        shakeAll(0.7);
+        break;
+      case 'defeated':
+        toastAll(`${NAMES.boss} is beaten!`, '#ffe08a');
+        shakeAll(1.0);
+        this.effects.burst(this.boss.position, 0xffffff, { count: 80, speed: 9, life: 1.5, up: 9 });
+        this.effects.ring(this.boss.position, 0xffe08a, { radius: 20, duration: 1.2, y: 1 });
+        const runId = this.runId;
+        setTimeout(() => {
+          if (!this.boss || this.runId !== runId) return; // the run was restarted meanwhile
+          this.enemies.spawnFleeingPups(this.boss.x, this.boss.z, 3);
+          for (const c of this.cows) this.hud.toast(c.index, 'It was three shy pups all along! 🐶🐶🐶', '#ffb3c8');
+          this.quest?.revealBossCharm();
+          this.hud.setBoss(null);
+        }, 1600);
+        break;
+    }
   }
 
   lose() {
@@ -251,6 +328,9 @@ export class Game {
       const s = this.world.spawn;
       this.titleViewport.lookFrom(s.x + Math.sin(this.time * 0.25) * 3, 4.2, s.z + 9, s.x, 1.2, s.z - 2);
       for (const c of this.previewCows) { c.update(dt, this.world); c.facing += dt * 0.35; c.group.rotation.y = c.facing; }
+      if (this.keyboard.wasPressed('Escape')) this.quitToTitle();
+    } else if (this.state === 'skins') {
+      if (this.keyboard.wasPressed('Escape')) { this.state = 'paused'; this.menus.showPause(); }
     } else if (this.state === 'playing') {
       this._updatePlaying(dt);
       if (this.keyboard.wasPressed('Escape')) this.pause();
@@ -262,6 +342,7 @@ export class Game {
       this.effects.update(dt);
       for (const cow of this.cows) cow.update(dt, this.world);
       if (this.state === 'lost') this.enemies?.update(dt, this._frameContext(dt));
+      if (this.state === 'won') this._tickEnding(dt);
     }
 
     this.engine.render();
@@ -279,7 +360,7 @@ export class Game {
     this.pickups.update(dt, this.players);
     this.coop.update(dt, this.players, ctx);
     this.quest?.update(dt, this.cows);
-    this._updateArena();
+    this._updateBoss(dt, ctx);
     this.effects.update(dt);
     this._updateViewports(dt);
     this._updateCompass();
@@ -289,7 +370,7 @@ export class Game {
 
   // Everything systems need to talk to each other this frame.
   _frameContext(dt) {
-    const targets = this.enemies ? this.enemies.list : [];
+    const targets = this.enemies ? [...this.enemies.list] : []; // copy: the boss must not leak into the enemy list
     if (this.boss && !this.boss.dead) targets.push(this.boss);
     return {
       dt,
@@ -306,12 +387,13 @@ export class Game {
     };
   }
 
-  // Until the boss arrives (Phase 6), stepping into the ring reveals the last charm.
-  _updateArena() {
-    if (this.boss || !this.quest || this.quest.bossDefeated || !this.quest.gateOpen) return;
-    const a = this.world.arena;
-    for (const cow of this.cows) {
-      if (Math.hypot(cow.x - a.x, cow.z - a.z) < a.r) { this.quest.revealBossCharm(); break; }
+  _updateBoss(dt, ctx) {
+    const b = this.boss;
+    if (!b) return;
+    b.update(dt, ctx);
+    if (b.removeMe) { b.dispose(); this.boss = null; return; }
+    if (!b.dead && b.state !== 'dormant') {
+      this.hud.setBoss({ name: NAMES.boss, fraction: b.hpFraction, enraged: b.enraged });
     }
   }
 
@@ -338,7 +420,8 @@ export class Game {
   _updateDowned(dt) {
     const allDown = this.cows.every((c) => c.isDown);
     for (const cow of this.cows) {
-      if (!cow.isDown) { this.hud.setDowned(cow.index, null); continue; }
+      if (!cow.isDown) { this.hud.setDowned(cow.index, null); cow._downCounted = false; continue; }
+      if (!cow._downCounted) { cow._downCounted = true; this.stats.downs++; }
       const solo = this.cows.length === 1;
       const left = Math.max(0, DOWN_GAME_OVER_DELAY - cow.downTimer);
       if (cow.nuzzle > 0) continue; // Coop is drawing the nuzzle progress

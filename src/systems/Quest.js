@@ -92,13 +92,10 @@ export class Quest {
     for (const c of cows) {
       lines.forEach((line, i) => setTimeout(() => this.hud.toast(c.index, line, i === 0 ? '#ffe08a' : '#ffffff'), i * 450));
     }
+    if (this.count >= this.total) this.won = true;
     this.onEvent('charm', { charm, cow });
     this.refreshHud();
-
-    if (this.count >= this.total) {
-      this.won = true;
-      this.onEvent('win');
-    }
+    if (this.won) this.onEvent('win');
   }
 
   // Text for the shared tracker.

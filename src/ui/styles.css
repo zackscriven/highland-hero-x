@@ -203,3 +203,18 @@ kbd {
 @keyframes bond-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 .hud-downed .nuzzle { display: block; margin-top: 6px; height: 10px; border-radius: 6px; background: rgba(0,0,0,0.4); overflow: hidden; }
 .hud-downed .nuzzle i { display: block; height: 100%; background: linear-gradient(90deg, #ffb3c8, #ff6f91); width: 0; }
+
+/* ── Boss bar ─────────────────────────────────────────────────────────── */
+.hud-boss {
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: min(520px, 60vw);
+  background: rgba(30, 20, 46, 0.85); border: 3px solid #b28dff; border-radius: 14px; padding: 8px 14px 10px;
+  box-shadow: 0 0 22px rgba(178, 141, 255, 0.45); opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+}
+.hud-boss.show { opacity: 1; }
+.hud-boss.enraged { border-color: #ff6b6b; box-shadow: 0 0 26px rgba(255, 107, 107, 0.6); animation: boss-rage 0.6s ease-in-out infinite; }
+@keyframes boss-rage { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.02); } }
+.boss-name { font-weight: 900; font-size: 15px; letter-spacing: 1px; color: #d8c8ff; text-align: center; margin-bottom: 4px; }
+.bar.boss { height: 16px; }
+.bar.boss .fill { background: linear-gradient(90deg, #d69bff, #8a4dff); }
+.hud-panel.split ~ .hud-boss { top: auto; bottom: 112px; }
+.win-stats { margin-top: 12px; font-size: 14px; line-height: 1.7; background: rgba(0,0,0,0.22); border-radius: 12px; padding: 8px 14px; }

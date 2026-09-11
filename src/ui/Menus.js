@@ -78,12 +78,19 @@ export class Menus {
     el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
   }
 
-  showWin({ players = 1 } = {}) {
+  showWin({ players = 1, stats = {} } = {}) {
+    const mins = Math.floor((stats.time ?? 0) / 60), secs = Math.round((stats.time ?? 0) % 60);
+    const heroes = (stats.names ?? []).join(' & ') || 'A brave cow';
     const el = this._show('win', `
       <div class="screen">
         <div class="title-card">
           <h2 class="screen-title">You saved the grasslands! 🌈</h2>
-          <p class="subtitle">Every Highland Charm is home. The colour is back, the wolves are gone, and ${players === 2 ? 'two heroes' : 'a hero'} will be sung about for a hundred summers.</p>
+          <p class="subtitle">Every Highland Charm is home. The colour is back, the Three-Headed Wolf is just three shy pups now, and ${players === 2 ? 'two heroes' : 'a hero'} will be sung about for a hundred summers.</p>
+          <div class="win-stats">
+            <div><b>${heroes}</b></div>
+            <div>⏱️ ${mins}m ${secs}s &nbsp;·&nbsp; 💎 ${stats.charms ?? 7} / 7 Charms &nbsp;·&nbsp; 🐺 ${stats.kos ?? 0} wolves & bears bonked &nbsp;·&nbsp; 😵 ${stats.downs ?? 0} tumbles</div>
+            <div class="birthday">Happy 10th birthday, Zoë! 🎂🐄</div>
+          </div>
           <div class="btn-row">
             <button class="btn" data-action="again">Play Again</button>
             <button class="btn ghost" data-action="quit">Back to Title</button>

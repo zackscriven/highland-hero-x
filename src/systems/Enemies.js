@@ -38,6 +38,24 @@ export class Enemies {
 
   get alive() { return this.list.filter((e) => !e.dead); }
 
+  // Boss howl: wolves hop in from the ring's edge. They don't respawn.
+  spawnPups(arena, count) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const e = this.spawn('wolf', arena.x + Math.cos(a) * (arena.r - 4), arena.z + Math.sin(a) * (arena.r - 4), { ephemeral: true });
+      e.state = 'chase';
+      this.effects.burst(e.position, 0xb28dff, { count: 14, speed: 5, life: 0.7, up: 5 });
+    }
+  }
+
+  // Beaten boss → three tiny pups scamper off.
+  spawnFleeingPups(x, z, count = 3) {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      this.spawn('wolf', x + Math.cos(a) * 2, z + Math.sin(a) * 2, { ephemeral: true, harmless: true, scale: 0.5, fleeFrom: { x, z } });
+    }
+  }
+
   update(dt, ctx) {
     for (const e of this.list) e.update(dt, ctx);
 
@@ -45,11 +63,12 @@ export class Enemies {
       const e = this.list[i];
       if (!e.dead || e._counted) continue;
       e._counted = true;
+      if (e.harmless) continue;
       this.effects.burst(e.position, 0xffffff, { count: 18, speed: 6, life: 0.8, up: 6 });
       this.effects.puff(e.position, 0xcbbfb0, 10);
       this.onDeath?.(e);
       const guardCollected = e.guardOf && this.quest.collected.has(e.guardOf);
-      if (!guardCollected) this.respawns.push({ type: e.type, x: e.home.x, z: e.home.z, guardOf: e.guardOf, timer: RESPAWN_SECONDS });
+      if (!guardCollected && !e.ephemeral) this.respawns.push({ type: e.type, x: e.home.x, z: e.home.z, guardOf: e.guardOf, timer: RESPAWN_SECONDS });
     }
     for (let i = this.list.length - 1; i >= 0; i--) {
       if (this.list[i].removeMe) { this.list[i].dispose(); this.list.splice(i, 1); }

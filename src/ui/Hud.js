@@ -11,6 +11,7 @@ export class Hud {
 
   setPlayers(cows, viewports) {
     this.root.innerHTML = '';
+    this.bossEl = null;
     this.quest = this._makeQuest(cows.length > 1);
     this.panels = cows.map((cow, i) => this._makePanel(cow, viewports[i], i));
   }
@@ -19,6 +20,7 @@ export class Hud {
     this.root.innerHTML = '';
     this.panels = [];
     this.quest = null;
+    this.bossEl = null;
   }
 
   // ── Shared quest tracker ──────────────────────────────────────────────
@@ -33,6 +35,20 @@ export class Hud {
     `;
     this.root.appendChild(el);
     return { el, title: el.querySelector('.q-title'), gems: el.querySelector('.q-gems'), hint: el.querySelector('.q-hint') };
+  }
+
+  setBoss(info) {
+    if (!this.bossEl) {
+      this.bossEl = document.createElement('div');
+      this.bossEl.className = 'hud-boss';
+      this.bossEl.innerHTML = `<div class="boss-name"></div><div class="bar boss"><div class="fill"></div></div>`;
+      this.root.appendChild(this.bossEl);
+    }
+    if (!info) { this.bossEl.classList.remove('show'); return; }
+    this.bossEl.classList.add('show');
+    this.bossEl.classList.toggle('enraged', !!info.enraged);
+    this.bossEl.querySelector('.boss-name').textContent = info.name;
+    this.bossEl.querySelector('.fill').style.transform = `scaleX(${info.fraction})`;
   }
 
   setQuest({ count, total, charms, title, hint }) {

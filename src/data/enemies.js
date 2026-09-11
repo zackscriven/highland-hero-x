@@ -29,7 +29,7 @@ export const BERRY_SPOTS = [
   { x: 14, z: 84 }, { x: -20, z: 100 }, { x: 30, z: 60 }, { x: -60, z: 60 },
   { x: -8, z: 20 }, { x: 40, z: 22 }, { x: -40, z: -2 }, { x: 8, z: -6 },
   { x: 0, z: -28 }, { x: -30, z: -56 }, { x: 44, z: -60 }, { x: -50, z: -76 }, { x: 10, z: -80 },
-  { x: 0, z: -104 },
+  { x: 0, z: -104 }, { x: 12, z: -136 }, { x: -14, z: -128 },
 ];
 export const BERRY_HEAL = 30;
 export const BERRY_RESPAWN = 35;
