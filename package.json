@@ -1,17 +1,19 @@
 {
-  "name": "highland-hero-wolf-hollow",
+  "name": "highland-hero-x",
   "private": true,
-  "version": "0.1.0",
+  "version": "10.0.0",
+  "description": "Highland Hero X — a cozy, cute-scary low-poly cow adventure. Built for Zoë's 10th birthday.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "node scripts/check.mjs"
   },
   "dependencies": {
-    "three": "^0.160.0"
+    "three": "^0.186.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^8.3.0"
   }
 }
