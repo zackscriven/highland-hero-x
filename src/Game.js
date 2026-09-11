@@ -15,6 +15,7 @@ import { AbilityController } from './systems/Abilities.js';
 import { Enemies } from './systems/Enemies.js';
 import { Hazards } from './systems/Hazards.js';
 import { Pickups } from './systems/Pickups.js';
+import { Coop } from './systems/Coop.js';
 import { getSkin } from './data/skins.js';
 import { loadConfig, saveConfig, isSkinUnlocked } from './core/save.js';
 import { ZONES } from './data/zones.js';
@@ -168,6 +169,7 @@ export class Game {
     this.enemies.onDeath = (e) => { if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
     this.hazards = new Hazards({ world: this.world, effects: this.effects, hud: this.hud });
     this.pickups = new Pickups({ scene: this.engine.scene, world: this.world, effects: this.effects, hud: this.hud });
+    this.coop = new Coop({ hud: this.hud, effects: this.effects });
     this.menus.hide();
     this.keyboard.clear();
     this.state = 'playing';
@@ -275,6 +277,7 @@ export class Game {
     this.enemies.update(dt, ctx);
     this.hazards.update(dt, this.players);
     this.pickups.update(dt, this.players);
+    this.coop.update(dt, this.players, ctx);
     this.quest?.update(dt, this.cows);
     this._updateArena();
     this.effects.update(dt);
@@ -338,9 +341,10 @@ export class Game {
       if (!cow.isDown) { this.hud.setDowned(cow.index, null); continue; }
       const solo = this.cows.length === 1;
       const left = Math.max(0, DOWN_GAME_OVER_DELAY - cow.downTimer);
+      if (cow.nuzzle > 0) continue; // Coop is drawing the nuzzle progress
       this.hud.setDowned(cow.index, solo || allDown
         ? `Knocked out!<small>${left.toFixed(0)}…</small>`
-        : `Knocked out!<small>Your friend can nuzzle you back up.</small>`);
+        : `Knocked out!<small>Your friend can walk over and nuzzle you back up.</small>`);
     }
     if (allDown && this.cows.every((c) => c.downTimer >= DOWN_GAME_OVER_DELAY)) this.lose();
   }

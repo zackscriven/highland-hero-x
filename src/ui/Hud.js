@@ -51,7 +51,7 @@ export class Hud {
 
   _makePanel(cow, vp, i) {
     const el = document.createElement('div');
-    el.className = 'hud-panel' + (vp.rect.x > 0 ? ' right-side' : '');
+    el.className = 'hud-panel' + (vp.rect.x > 0 ? ' right-side' : '') + (vp.rect.w < 1 ? ' split' : '');
     el.style.left = `${vp.rect.x * 100}%`;
     el.style.width = `${vp.rect.w * 100}%`;
     const swatch = '#' + cow.skin.colors.body.toString(16).padStart(6, '0');

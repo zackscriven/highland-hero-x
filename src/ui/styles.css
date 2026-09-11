@@ -196,7 +196,8 @@ kbd {
 .skin-blurb { margin-top: 8px; font-size: 12px; opacity: 0.9; min-height: 1.6em; }
 
 /* ── Split-screen tweaks & co-op ─────────────────────────────────────── */
-.hud-quest.bottom { top: auto; bottom: 14px; max-width: 60vw; }
+.hud-quest.bottom { top: auto; bottom: 48px; max-width: 60vw; }
+.hud-panel.split .hud-zone { top: 136px; font-size: 26px; }
 .bond-tag { display: none; margin-left: auto; font-size: 14px; animation: bond-pulse 1.2s ease-in-out infinite; }
 .hud-name.bonded .bond-tag { display: inline-block; }
 @keyframes bond-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }

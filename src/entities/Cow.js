@@ -39,6 +39,8 @@ export class Cow {
     this.isDown = false;                 // knocked out (0 health)
     this.downTimer = 0;
     this.abilities = new Set();          // unlocked ability ids (granted by the Quest system)
+    this.herdBond = false;               // co-op: near your friend → tougher + faster stamina
+    this.nuzzle = 0;                     // co-op revive progress while a friend stands close
     this._fwd = { x: 0, z: -1 };
   }
 
@@ -109,7 +111,7 @@ export class Cow {
     const wantSprint = this.input.isDown('sprint') && mv.moving && s.stamina > 0;
     this.isSprinting = wantSprint;
     if (wantSprint) s.stamina = Math.max(0, s.stamina - COW.staminaDrain * dt);
-    else s.stamina = Math.min(s.staminaMax, s.stamina + COW.staminaRegen * dt);
+    else s.stamina = Math.min(s.staminaMax, s.stamina + COW.staminaRegen * (this.herdBond ? 1.6 : 1) * dt);
 
     const speed = (wantSprint ? COW.sprintSpeed : COW.walkSpeed) * this.speedMult;
     const p = this.group.position;
@@ -137,6 +139,7 @@ export class Cow {
 
   takeDamage(amount, { source } = {}) {
     if (this.isDown || this.invulnTimer > 0 || amount <= 0) return 0;
+    if (this.herdBond) amount *= 0.85;
     this.stats.health = Math.max(0, this.stats.health - amount);
     this.invulnTimer = 0.35;
     this.flash(0xff4444, 0.5);
