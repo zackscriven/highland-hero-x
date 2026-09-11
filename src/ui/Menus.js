@@ -1,6 +1,7 @@
 // Full-screen menus: title, pause, win/lose. Skin & mode selection arrive in later phases.
 import { NAMES } from '../data/constants.js';
 import { KEY_LABELS } from '../core/InputMap.js';
+import { SetupScreen } from './SetupScreen.js';
 
 const kbd = (code) => `<kbd>${KEY_LABELS[code] ?? code}</kbd>`;
 
@@ -52,6 +53,12 @@ export class Menus {
     el.querySelector('[data-action="play"]').addEventListener('click', () => this.h.onPlay?.());
   }
 
+  showSetup(opts) {
+    this.root.innerHTML = '';
+    this.current = 'setup';
+    return new SetupScreen(this.root, opts);
+  }
+
   showPause() {
     const el = this._show('pause', `
       <div class="screen dim">
@@ -60,12 +67,14 @@ export class Menus {
           <p class="subtitle">Take a breath, wee cow.</p>
           <div class="btn-row">
             <button class="btn" data-action="resume">Resume</button>
+            <button class="btn secondary" data-action="skins">Change Skin 🎨</button>
             <button class="btn ghost" data-action="quit">Back to Title</button>
           </div>
         </div>
       </div>
     `);
     el.querySelector('[data-action="resume"]').addEventListener('click', () => this.h.onResume?.());
+    el.querySelector('[data-action="skins"]').addEventListener('click', () => this.h.onSkins?.());
     el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
   }
 

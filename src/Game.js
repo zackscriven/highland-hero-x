@@ -16,6 +16,7 @@ import { Enemies } from './systems/Enemies.js';
 import { Hazards } from './systems/Hazards.js';
 import { Pickups } from './systems/Pickups.js';
 import { getSkin } from './data/skins.js';
+import { loadConfig, saveConfig, isSkinUnlocked } from './core/save.js';
 import { ZONES } from './data/zones.js';
 import { NAMES } from './data/constants.js';
 
@@ -31,11 +32,13 @@ export class Game {
     this.effects = new Effects(this.engine.scene);
     this.hud = new Hud(appEl.querySelector('#hud-root'));
     this.menus = new Menus(appEl.querySelector('#menu-root'), {
-      onPlay: () => this.startRun({ players: [{ skinId: 'classic', name: 'Player 1' }] }),
+      onPlay: () => this.showSetup(),
       onResume: () => this.resume(),
       onQuit: () => this.quitToTitle(),
       onRestart: () => this.startRun(this.lastConfig),
+      onSkins: () => this.showLiveSkins(),
     });
+    this.previewCows = [];
 
     this.cows = [];
     this.players = [];   // [{ cow, abilities }]
@@ -47,7 +50,7 @@ export class Game {
     this.boss = null;
     this.state = 'title';
     this.time = 0;
-    this.lastConfig = { players: [{ skinId: 'classic', name: 'Player 1' }] };
+    this.lastConfig = loadConfig();
     this.clock = new THREE.Clock();
 
     // Title screen shows the meadow with a slow camera orbit.
@@ -63,10 +66,68 @@ export class Game {
     requestAnimationFrame(this._tick);
   }
 
+  // ── Setup screen (mode + skins) with live preview cows ────────────────
+
+  showSetup() {
+    this.state = 'setup';
+    const config = this.lastConfig;
+    // Any skin that got locked/unlocked since last time: fall back safely.
+    for (const p of config.players) if (!isSkinUnlocked(getSkin(p.skinId))) p.skinId = 'classic';
+    this._syncPreviewCows(config);
+    this.menus.showSetup({
+      config,
+      onChange: (cfg) => { this.lastConfig = cfg; this._syncPreviewCows(cfg); },
+      onStart: (cfg) => { this.lastConfig = cfg; saveConfig(cfg); this.startRun(cfg); },
+      onBack: () => this.quitToTitle(),
+    });
+  }
+
+  showLiveSkins() {
+    if (this.state !== 'paused') return;
+    this.state = 'skins';
+    const config = { players: this.cows.map((c) => ({ skinId: c.skin.id, name: c.name })) };
+    this.menus.showSetup({
+      config, live: true,
+      onChange: (cfg) => cfg.players.forEach((p, i) => this.cows[i]?.setSkin(getSkin(p.skinId))),
+      onStart: (cfg) => {
+        cfg.players.forEach((p, i) => { if (this.cows[i]) this.cows[i].setSkin(getSkin(p.skinId)); });
+        this.lastConfig = { players: cfg.players.map((p) => ({ ...p })) };
+        saveConfig(this.lastConfig);
+        this.hud.setPlayers(this.cows, this.viewports);
+        for (const pl of this.players) { this.hud.refreshAbilities(pl.cow.index); }
+        this.quest?.refreshHud();
+        this.state = 'paused';
+        this.menus.showPause();
+      },
+      onBack: () => { this.state = 'paused'; this.menus.showPause(); },
+    });
+  }
+
+  _syncPreviewCows(config) {
+    const nullInput = { isDown: () => false, wasPressed: () => false, moveVector: () => ({ x: 0, z: 0, moving: false }), label: () => '', moveLabel: () => '' };
+    while (this.previewCows.length > config.players.length) this.previewCows.pop().dispose();
+    config.players.forEach((p, i) => {
+      let cow = this.previewCows[i];
+      if (!cow) {
+        cow = new Cow({ scene: this.engine.scene, skin: getSkin(p.skinId), input: nullInput, index: i, name: p.name });
+        this.previewCows.push(cow);
+      } else if (cow.skin.id !== p.skinId) cow.setSkin(getSkin(p.skinId));
+      const s = this.world.spawn;
+      const two = config.players.length === 2;
+      cow.placeAt(s.x + (two ? (i === 0 ? -2.2 : 2.2) : 0), s.z - 2, Math.PI * 0.85);
+    });
+  }
+
+  _clearPreviewCows() {
+    for (const c of this.previewCows) c.dispose();
+    this.previewCows = [];
+  }
+
   // ── Run lifecycle ─────────────────────────────────────────────────────
 
   startRun(config) {
     this.lastConfig = config;
+    this._clearPreviewCows();
     this._teardownRun();
     this.world.setVividness(0);
     this.world.setRestoration(0);
@@ -95,10 +156,6 @@ export class Game {
 
     this.engine.setViewports(this.viewports);
     this.hud.setPlayers(this.cows, this.viewports);
-    for (const cow of this.cows) {
-      const k = (a) => `<b>${cow.input.label(a)}</b>`;
-      this.hud.setHint(cow.index, `Move ${k('up')}${k('left')}${k('down')}${k('right')} · Sprint ${k('sprint')} · Headbutt ${k('headbutt')} · Charge ${k('charge')} · Shield ${k('shield')} · Moo ${k('moo')} · Grass ${k('grass')}`);
-    }
     this.quest = new Quest({
       world: this.world, scene: this.engine.scene, effects: this.effects, hud: this.hud,
       onEvent: (type, data) => this._onQuestEvent(type, data),
@@ -146,6 +203,7 @@ export class Game {
   }
 
   quitToTitle() {
+    this._clearPreviewCows();
     this._teardownRun();
     this.engine.setViewports([this.titleViewport]);
     this.state = 'title';
@@ -186,6 +244,11 @@ export class Game {
 
     if (this.state === 'title') {
       this.titleViewport.orbit(this.time, this.world.spawn, 30);
+    } else if (this.state === 'setup') {
+      // Low, close camera on the preview cows; they idle and slowly turn to show off.
+      const s = this.world.spawn;
+      this.titleViewport.lookFrom(s.x + Math.sin(this.time * 0.25) * 3, 4.2, s.z + 9, s.x, 1.2, s.z - 2);
+      for (const c of this.previewCows) { c.update(dt, this.world); c.facing += dt * 0.35; c.group.rotation.y = c.facing; }
     } else if (this.state === 'playing') {
       this._updatePlaying(dt);
       if (this.keyboard.wasPressed('Escape')) this.pause();

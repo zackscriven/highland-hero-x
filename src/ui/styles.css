@@ -158,3 +158,47 @@ kbd {
 /* ── Compass ──────────────────────────────────────────────────────────── */
 .hud-compass { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 800; }
 .hud-compass .arrow { display: inline-block; font-size: 18px; color: var(--charm); transition: transform 0.15s linear; }
+
+/* ── Setup screen (mode + skins) ─────────────────────────────────────── */
+.setup-card { max-width: 980px; width: min(94vw, 980px); padding: 22px 26px; }
+.mode-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.pill {
+  font-family: var(--font); font-weight: 800; font-size: 14px; color: var(--cream); cursor: pointer;
+  background: rgba(255,244,220,0.12); border: 2px solid rgba(255,244,220,0.5); border-radius: 999px; padding: 8px 16px;
+}
+.pill.active { background: var(--charm); color: var(--wood-dark); border-color: #fff; }
+.players-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.player-setup {
+  flex: 1 1 300px; max-width: 440px; background: rgba(0,0,0,0.25); border-radius: 16px; padding: 12px 14px; text-align: left;
+  border: 2px solid rgba(255,244,220,0.25);
+}
+.ps-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.ps-tag { font-size: 12px; font-weight: 800; color: var(--charm); white-space: nowrap; }
+.ps-name {
+  font-family: var(--font); font-weight: 800; font-size: 15px; color: var(--wood-dark); background: var(--cream);
+  border: 2px solid #b8a27e; border-radius: 10px; padding: 5px 10px; width: 130px;
+}
+.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.skin-btn {
+  font-family: var(--font); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: rgba(255,244,220,0.1); border: 2px solid rgba(255,244,220,0.4); border-radius: 12px; padding: 8px 6px; color: var(--cream);
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+.skin-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--cream); }
+.skin-btn.selected { border-color: var(--charm); background: rgba(255,224,138,0.18); box-shadow: 0 0 12px rgba(255,224,138,0.5); }
+.skin-btn.locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+.skin-name { font-size: 11px; font-weight: 800; text-align: center; line-height: 1.2; }
+.skin-swatch {
+  position: relative; width: 42px; height: 42px; border-radius: 50%; background: var(--body); border: 3px solid var(--cream); overflow: hidden;
+}
+.sw-fringe { position: absolute; left: 4px; right: 4px; top: 2px; height: 14px; border-radius: 0 0 10px 10px; background: var(--fringe); }
+.sw-snout { position: absolute; left: 11px; right: 11px; bottom: 3px; height: 11px; border-radius: 8px; background: var(--snout); }
+.skin-blurb { margin-top: 8px; font-size: 12px; opacity: 0.9; min-height: 1.6em; }
+
+/* ── Split-screen tweaks & co-op ─────────────────────────────────────── */
+.hud-quest.bottom { top: auto; bottom: 14px; max-width: 60vw; }
+.bond-tag { display: none; margin-left: auto; font-size: 14px; animation: bond-pulse 1.2s ease-in-out infinite; }
+.hud-name.bonded .bond-tag { display: inline-block; }
+@keyframes bond-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+.hud-downed .nuzzle { display: block; margin-top: 6px; height: 10px; border-radius: 6px; background: rgba(0,0,0,0.4); overflow: hidden; }
+.hud-downed .nuzzle i { display: block; height: 100%; background: linear-gradient(90deg, #ffb3c8, #ff6f91); width: 0; }

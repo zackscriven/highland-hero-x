@@ -26,3 +26,15 @@ export function unlockSkin(id) {
 export function isSkinUnlocked(skin) {
   return !!skin.unlocked || unlockedSkinIds().has(skin.id);
 }
+
+const DEFAULT_CONFIG = { players: [{ skinId: 'classic', name: 'Player 1' }] };
+
+export function loadConfig() {
+  const c = loadSave().config;
+  if (!c?.players?.length) return structuredClone(DEFAULT_CONFIG);
+  return { players: c.players.slice(0, 2).map((p, i) => ({ skinId: p.skinId ?? 'classic', name: p.name ?? `Player ${i + 1}` })) };
+}
+
+export function saveConfig(config) {
+  updateSave({ config: { players: config.players.map((p) => ({ skinId: p.skinId, name: p.name })) } });
+}

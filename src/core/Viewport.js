@@ -93,6 +93,11 @@ export class Viewport {
     this.camera.lookAt(center.x, center.y + 1, center.z);
   }
 
+  lookFrom(x, y, z, tx, ty, tz) {
+    this.camera.position.set(x, y, z);
+    this.camera.lookAt(tx, ty, tz);
+  }
+
   _placeCamera() {
     this.camera.position.copy(this.target).add(CAMERA.offset);
     this.lookAt.set(this.target.x, this.target.y + 1, this.target.z);

@@ -11,7 +11,7 @@ export class Hud {
 
   setPlayers(cows, viewports) {
     this.root.innerHTML = '';
-    this.quest = this._makeQuest();
+    this.quest = this._makeQuest(cows.length > 1);
     this.panels = cows.map((cow, i) => this._makePanel(cow, viewports[i], i));
   }
 
@@ -23,9 +23,9 @@ export class Hud {
 
   // ── Shared quest tracker ──────────────────────────────────────────────
 
-  _makeQuest() {
+  _makeQuest(split) {
     const el = document.createElement('div');
-    el.className = 'hud-quest';
+    el.className = 'hud-quest' + (split ? ' bottom' : '');
     el.innerHTML = `
       <div class="q-title"></div>
       <div class="q-gems"></div>
@@ -63,7 +63,7 @@ export class Hud {
       </div>`).join('');
     el.innerHTML = `
       <div class="hud-card">
-        <div class="hud-name"><span class="hud-swatch" style="background:${swatch}"></span>${cow.name} · ${cow.skin.name}</div>
+        <div class="hud-name"><span class="hud-swatch" style="background:${swatch}"></span>${cow.name} · ${cow.skin.name}<span class="bond-tag" title="Herd Bond: stick together for faster stamina and tougher hides">💞</span></div>
         <div class="bar health"><div class="fill"></div><span class="label">HEALTH</span></div>
         <div class="bar stamina"><div class="fill"></div><span class="label">STAMINA</span></div>
         <div class="hud-abilities">${slots}</div>
@@ -72,7 +72,7 @@ export class Hud {
       <div class="hud-zone"></div>
       <div class="hud-toasts"></div>
       <div class="hud-downed"></div>
-      <div class="hud-hint">Move <b>${cow.input.moveLabel()}</b> · Sprint <b>${cow.input.label('sprint')}</b></div>
+      <div class="hud-hint">${this._hintHtml(cow)}</div>
     `;
     this.root.appendChild(el);
     const panel = {
@@ -92,6 +92,17 @@ export class Hud {
     };
     this.refreshAbilities(i);
     return panel;
+  }
+
+  _hintHtml(cow) {
+    const k = (a) => `<b>${cow.input.label(a)}</b>`;
+    return `Move ${k('up')}${k('left')}${k('down')}${k('right')} · Sprint ${k('sprint')} · Headbutt ${k('headbutt')} · Charge ${k('charge')} · Shield ${k('shield')} · Moo ${k('moo')} · Grass ${k('grass')}`;
+  }
+
+  setBond(index, on) {
+    const p = this.panels[index];
+    if (!p) return;
+    p.el.querySelector('.hud-name').classList.toggle('bonded', !!on);
   }
 
   refreshAbilities(index) {
