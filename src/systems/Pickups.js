@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { BERRY_SPOTS, BERRY_HEAL, BERRY_RESPAWN } from '../data/enemies.js';
 import { dist2 } from '../core/math.js';
+import { audio } from './Audio.js';
 
 const berryGeo = new THREE.SphereGeometry(0.28, 7, 6);
 const leafGeo = new THREE.ConeGeometry(0.5, 0.35, 5);
@@ -70,6 +71,7 @@ export class Pickups {
           const healed = cow.heal(BERRY_HEAL);
           this.hud.toast(cow.index, `+${Math.round(healed)} ❤️ Yum, berries!`, '#ff8fa3');
           this.effects.burst(it.mesh.position, 0xff3b5c, { count: 12, speed: 4, life: 0.6, up: 4 });
+          audio.play('berry');
           it.taken = true;
           it.timer = BERRY_RESPAWN;
           it.mesh.visible = false;

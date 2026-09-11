@@ -22,7 +22,7 @@ export class SetupScreen {
   render() {
     const two = this.config.players.length === 2;
     this.root.innerHTML = `
-      <div class="screen ${this.live ? 'dim' : ''}">
+      <div class="screen ${this.live ? 'dim' : 'setup'}">
         <div class="title-card setup-card">
           <h2 class="screen-title">${this.live ? 'Change your cow' : 'Choose your cows'}</h2>
           ${this.live ? '' : `

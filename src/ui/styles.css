@@ -160,7 +160,8 @@ kbd {
 .hud-compass .arrow { display: inline-block; font-size: 18px; color: var(--charm); transition: transform 0.15s linear; }
 
 /* ── Setup screen (mode + skins) ─────────────────────────────────────── */
-.setup-card { max-width: 980px; width: min(94vw, 980px); padding: 22px 26px; }
+.setup-card { max-width: 980px; width: min(94vw, 980px); padding: 18px 26px 20px; }
+.screen.setup { justify-content: flex-end; padding-bottom: 14px; background: linear-gradient(180deg, rgba(28,26,43,0) 0%, rgba(28,26,43,0.55) 100%); }
 .mode-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
 .pill {
   font-family: var(--font); font-weight: 800; font-size: 14px; color: var(--cream); cursor: pointer;

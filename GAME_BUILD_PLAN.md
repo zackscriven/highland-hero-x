@@ -1,3 +1,54 @@
+# Highland Hero X — Build Plan
+
+> **Status (2026-09-11): V10 shipped.** The game was rebuilt from the ground up for Zoë's
+> 10th birthday. This file now starts with the V10 architecture and the V10.2 roadmap;
+> the original V9 weekend plan is kept below for history. See `CHANGELOG.md` and `README.md`.
+
+## V10 — what exists
+
+- **Mission:** recover 7 Highland Charms → abilities/skins/health unlock for all players →
+  6 Charms open the Thorn Gate → beat the Three-Headed Wolf → Frost Charm → grasslands restored.
+- **Modes:** 1 player, or 2 players split-screen on one keyboard (WASD vs arrows).
+- **Zones (south → north along Z):** Sunny Meadow → Training Grove → Wolf Hollow → The Howling Ring.
+- **Run:** `npm run dev` · **Build:** `npm run build && npm run preview` · **Checks:** `npm run check`.
+
+### Architecture (src/)
+
+| Layer | Files | Responsibility |
+| --- | --- | --- |
+| core | `Engine`, `Viewport`, `Keyboard`, `InputMap`, `math`, `save` | renderer + N viewports with per-viewport fog/sky, cameras, per-player key maps, local save |
+| data | `constants`, `zones`, `skins`, `abilities`, `charms`, `enemies` | every name, colour, and tuning number — edit these first |
+| world | `World`, `props` | terrain (vertex-coloured, fades/blooms), instanced props, obstacles, hazards, arena + gate |
+| entities | `Cow`, `CowMesh`, `Enemy`, `Boss`, `Charm` | things with a position and a mesh |
+| systems | `Abilities`, `Enemies`, `Quest`, `Coop`, `Hazards`, `Pickups`, `Effects`, `Audio` | rules; each gets a per-frame `ctx` from `Game` |
+| ui | `Hud`, `Menus`, `SetupScreen`, `styles.css` | DOM overlay: per-player panels, shared tracker, boss bar, screens |
+| root | `Game.js`, `main.js` | state machine: title → setup → playing ⇄ paused/skins → won/lost |
+
+Rules of thumb: game logic never reads raw key codes (only `InputMap` actions); rendering
+never mutates game state; `Game._frameContext()` is the only place systems are wired together.
+
+## V10.2 — local-network multiplayer (roadmap, do not start yet)
+
+Goal: one laptop hosts; a tablet or second laptop on the same wifi opens a URL and joins,
+Minecraft-LAN style. Scope it as its own phase once V10 split-screen has been played.
+
+1. `server/host.mjs`: Node + `ws`; serves `dist/` and relays messages. `npm run host` prints
+   `http://<lan-ip>:5173` and a room code; the setup screen shows both.
+2. Host-authoritative simulation: the host keeps running `Game` exactly as now. Each remote
+   player is a `Cow` whose `input` is a `NetworkInput` implementing the `InputMap` interface
+   (`isDown / wasPressed / moveVector / label`) fed from client packets (down-bitmask + edges, 30 Hz).
+3. Snapshot broadcast (~20 Hz): cows (pos, facing, stats, skin, flags), enemies + boss
+   (pos, facing, hp, state), charm collected set, world vividness/gate, and a queue of
+   one-shot events (`charm`, `hit`, `moo`, `bossEvent`) so clients can play effects/sounds.
+4. Client mode: `Game` in `spectator-input` mode — renders from snapshots with light
+   interpolation, runs its own `Viewport` and HUD, sends input, does not simulate.
+5. Keep it offline-only: bind to LAN, no auth, no external services. Room code prevents
+   accidental joins.
+
+---
+
+# Original V9 plan (historical)
+
 # Highland Hero: Wolf Hollow — Weekend Game Build Plan
 
 ## Initial Claude Code Prompt

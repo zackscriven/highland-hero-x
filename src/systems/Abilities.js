@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { ABILITIES, ABILITY_BY_ID } from '../data/abilities.js';
 import { CHARMS } from '../data/charms.js';
 import { dist2 } from '../core/math.js';
+import { audio } from './Audio.js';
 
 export const TUNE = {
   headbutt: { damage: 18, range: 2.4, reach: 2.0, knock: 7, anim: 0.28 },
@@ -85,6 +86,7 @@ export class AbilityController {
   _lockedHint(a) {
     if (this.lockedToastCd > 0) return;
     this.lockedToastCd = 2.5;
+    audio.play('locked');
     const charm = CHARMS.find((c) => c.rewards?.ability === a.id);
     this.hud.toast(this.cow.index, `🔒 ${a.name} — find the ${charm?.name ?? 'right Charm'}`, '#cfcfcf');
   }
@@ -95,6 +97,7 @@ export class AbilityController {
     const T = TUNE.headbutt, cow = this.cow;
     this.cd.headbutt = ABILITY_BY_ID.headbutt.cooldown;
     this.headbuttTimer = T.anim;
+    audio.play('headbutt');
     const f = cow.forward();
     const hx = cow.x + f.x * T.reach, hz = cow.z + f.z * T.reach;
     this.effects.puff({ x: hx, z: hz }, 0xe9dcc0, 5);
@@ -105,6 +108,7 @@ export class AbilityController {
       if (dist2(hx, hz, t.x, t.z) < r * r) {
         t.takeDamage(T.damage, { fromX: cow.x, fromZ: cow.z, knock: T.knock });
         this.effects.burst({ x: t.x, z: t.z }, 0xfff1a8, { count: 10, speed: 5, life: 0.45 });
+        audio.play('enemyHit');
         hit++;
       }
     }
@@ -130,6 +134,7 @@ export class AbilityController {
     cow.facing = Math.atan2(-dx, -dz);
     cow.group.rotation.y = cow.facing;
     this.hud.setSlotActive(cow.index, 'charge', true);
+    audio.play('charge');
     this.effects.ring(cow.position, 0xe9dcc0, { radius: 3, duration: 0.35 });
   }
 
@@ -151,6 +156,7 @@ export class AbilityController {
         c.hits.add(t);
         t.takeDamage(T.damage, { fromX: p.x - c.dirX * 2, fromZ: p.z - c.dirZ * 2, knock: T.knock });
         this.effects.burst({ x: t.x, z: t.z }, 0xffb347, { count: 14, speed: 7, life: 0.6 });
+        audio.play('enemyHit');
         ctx.shake(cow.index, 0.5);
       }
     }
@@ -172,6 +178,7 @@ export class AbilityController {
     this.shield.active = true;
     this.shield.timer = TUNE.shield.duration;
     this.shieldRing.visible = true;
+    audio.play('shield');
     this.hud.setSlotActive(this.cow.index, 'shield', true);
     this.effects.ring(this.cow.position, 0xffe08a, { radius: 2.5, duration: 0.4, y: 1.2 });
     this.cow.flash(0xffe08a, 0.5);
@@ -203,6 +210,7 @@ export class AbilityController {
     this.effects.burst(cow.position, 0x8ff6ff, { count: 24, speed: 10, life: 0.7, up: 3 });
     ctx.shake(cow.index, 0.7);
     this.hud.toast(cow.index, 'MOOOOO!', '#8ff6ff');
+    audio.play('moo');
     for (const t of ctx.targets) {
       if (t.dead) continue;
       const r = T.radius + t.radius;
@@ -218,6 +226,7 @@ export class AbilityController {
   _use_grass(ctx) {
     const T = TUNE.grass, cow = this.cow;
     this.cd.grass = ABILITY_BY_ID.grass.cooldown;
+    audio.play('grass');
     this.effects.ring(cow.position, 0x8ad865, { radius: T.radius, duration: 0.8, y: 0.3 });
     this.effects.burst(cow.position, 0x8ad865, { count: 40, speed: 4, life: 1.3, up: 6, gravity: 3 });
     this.effects.burst(cow.position, 0xffffff, { count: 12, speed: 3, life: 1.0, up: 5, gravity: 3 });

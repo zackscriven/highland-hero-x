@@ -2,6 +2,7 @@
 import { NAMES } from '../data/constants.js';
 import { KEY_LABELS } from '../core/InputMap.js';
 import { SetupScreen } from './SetupScreen.js';
+import { audio } from '../systems/Audio.js';
 
 const kbd = (code) => `<kbd>${KEY_LABELS[code] ?? code}</kbd>`;
 
@@ -10,6 +11,7 @@ export class Menus {
     this.root = root;
     this.h = handlers;
     this.current = null;
+    root.addEventListener('click', (e) => { if (e.target.closest('button')) audio.play('ui'); });
   }
 
   hide() {
@@ -68,6 +70,7 @@ export class Menus {
           <div class="btn-row">
             <button class="btn" data-action="resume">Resume</button>
             <button class="btn secondary" data-action="skins">Change Skin 🎨</button>
+            <button class="btn ghost" data-action="sound">${audio.enabled ? '🔊 Sound: On' : '🔇 Sound: Off'}</button>
             <button class="btn ghost" data-action="quit">Back to Title</button>
           </div>
         </div>
@@ -75,6 +78,10 @@ export class Menus {
     `);
     el.querySelector('[data-action="resume"]').addEventListener('click', () => this.h.onResume?.());
     el.querySelector('[data-action="skins"]').addEventListener('click', () => this.h.onSkins?.());
+    el.querySelector('[data-action="sound"]').addEventListener('click', (e) => {
+      audio.setEnabled(!audio.enabled);
+      e.currentTarget.textContent = audio.enabled ? '🔊 Sound: On' : '🔇 Sound: Off';
+    });
     el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
   }
 

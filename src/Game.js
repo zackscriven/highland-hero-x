@@ -17,6 +17,7 @@ import { Hazards } from './systems/Hazards.js';
 import { Pickups } from './systems/Pickups.js';
 import { Coop } from './systems/Coop.js';
 import { Boss } from './entities/Boss.js';
+import { audio } from './systems/Audio.js';
 import { getSkin } from './data/skins.js';
 import { loadConfig, saveConfig, isSkinUnlocked } from './core/save.js';
 import { ZONES } from './data/zones.js';
@@ -41,6 +42,7 @@ export class Game {
       onSkins: () => this.showLiveSkins(),
     });
     this.previewCows = [];
+    audio.attachUnlock();
 
     this.cows = [];
     this.players = [];   // [{ cow, abilities }]
@@ -123,6 +125,7 @@ export class Game {
   _clearPreviewCows() {
     for (const c of this.previewCows) c.dispose();
     this.previewCows = [];
+    audio.attachUnlock();
   }
 
   // ── Run lifecycle ─────────────────────────────────────────────────────
@@ -174,7 +177,7 @@ export class Game {
     this.boss = new Boss(this.engine.scene, this.world.arena, { players: this.cows.length });
     this.boss.onEvent = (type, data) => this._onBossEvent(type, data);
     this.stats = { kos: 0, downs: 0 };
-    this.enemies.onDeath = (e) => { this.stats.kos++; if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
+    this.enemies.onDeath = (e) => { this.stats.kos++; audio.play('ko'); if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
     this.ending = null;
     this.menus.hide();
     this.keyboard.clear();
@@ -225,6 +228,7 @@ export class Game {
     this.state = 'won';
     this.world.setVividness(1);
     this.ending = { t: 0, shown: false };
+    audio.play('win');
     for (const pl of this.players) pl.abilities.cancelAll();
     for (const c of this.cows) this.hud.toast(c.index, 'The grasslands are saved! 🌈', '#ffe08a');
   }
@@ -253,6 +257,7 @@ export class Game {
     const shakeAll = (n) => { for (const vp of this.viewports) vp.shake = Math.max(vp.shake, n); };
     switch (type) {
       case 'wake':
+        audio.play('roar');
         toastAll(`${NAMES.boss} awakens…`, '#d8c8ff');
         shakeAll(0.5);
         this.hud.setBoss({ name: NAMES.boss, fraction: 1 });
@@ -263,6 +268,7 @@ export class Game {
         this.effects.ring(this.boss.position, 0xb28dff, { radius: 14, duration: 0.9, y: 1 });
         break;
       case 'telegraph':
+        audio.play('growl');
         this.effects.ring(this.boss.position, 0xffe08a, { radius: 6, duration: 0.8, y: 0.6 });
         break;
       case 'pounce':
@@ -272,16 +278,19 @@ export class Game {
         toastAll('It stumbled — hit it now! ✨', '#8ff6ff');
         break;
       case 'howl':
+        audio.play('howl');
         toastAll('AWOOOO! Wolves are coming!', '#d8c8ff');
         shakeAll(0.9);
         this.effects.ring(this.boss.position, 0xd8c8ff, { radius: 18, duration: 1.2, y: 2 });
         this.enemies.spawnPups(this.world.arena, data.pups);
         break;
       case 'enraged':
+        audio.play('roar');
         toastAll('The wolf is furious! Watch out!', '#ff6b6b');
         shakeAll(0.7);
         break;
       case 'defeated':
+        audio.play('bossDown');
         toastAll(`${NAMES.boss} is beaten!`, '#ffe08a');
         shakeAll(1.0);
         this.effects.burst(this.boss.position, 0xffffff, { count: 80, speed: 9, life: 1.5, up: 9 });
@@ -301,6 +310,7 @@ export class Game {
   lose() {
     if (this.state !== 'playing') return;
     this.state = 'lost';
+    audio.play('lose');
     setTimeout(() => this.menus.showLose(), 900);
   }
 
@@ -326,7 +336,7 @@ export class Game {
     } else if (this.state === 'setup') {
       // Low, close camera on the preview cows; they idle and slowly turn to show off.
       const s = this.world.spawn;
-      this.titleViewport.lookFrom(s.x + Math.sin(this.time * 0.25) * 3, 4.2, s.z + 9, s.x, 1.2, s.z - 2);
+      this.titleViewport.lookFrom(s.x + Math.sin(this.time * 0.25) * 4, 5.2, s.z + 14, s.x, -2.2, s.z - 2);
       for (const c of this.previewCows) { c.update(dt, this.world); c.facing += dt * 0.35; c.group.rotation.y = c.facing; }
       if (this.keyboard.wasPressed('Escape')) this.quitToTitle();
     } else if (this.state === 'skins') {
@@ -382,7 +392,7 @@ export class Game {
       targets,
       boss: this.boss,
       shake: (index, amount) => { const vp = this.viewports[index]; if (vp) vp.shake = Math.max(vp.shake, amount); },
-      onPlayerHit: (pl, dealt) => { this.viewports[pl.cow.index].shake = Math.max(this.viewports[pl.cow.index].shake, 0.3 + dealt * 0.02); },
+      onPlayerHit: (pl, dealt) => { audio.play('hurt'); this.viewports[pl.cow.index].shake = Math.max(this.viewports[pl.cow.index].shake, 0.3 + dealt * 0.02); },
       onRevive: () => {},
     };
   }
@@ -421,7 +431,7 @@ export class Game {
     const allDown = this.cows.every((c) => c.isDown);
     for (const cow of this.cows) {
       if (!cow.isDown) { this.hud.setDowned(cow.index, null); cow._downCounted = false; continue; }
-      if (!cow._downCounted) { cow._downCounted = true; this.stats.downs++; }
+      if (!cow._downCounted) { cow._downCounted = true; this.stats.downs++; audio.play('ko'); }
       const solo = this.cows.length === 1;
       const left = Math.max(0, DOWN_GAME_OVER_DELAY - cow.downTimer);
       if (cow.nuzzle > 0) continue; // Coop is drawing the nuzzle progress

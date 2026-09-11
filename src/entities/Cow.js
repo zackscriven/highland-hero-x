@@ -108,7 +108,7 @@ export class Cow {
       return;
     }
 
-    const wantSprint = this.input.isDown('sprint') && mv.moving && s.stamina > 0;
+    const wantSprint = this.input.isDown('sprint') && mv.moving && s.stamina > (this.isSprinting ? 0 : 10);
     this.isSprinting = wantSprint;
     if (wantSprint) s.stamina = Math.max(0, s.stamina - COW.staminaDrain * dt);
     else s.stamina = Math.min(s.staminaMax, s.stamina + COW.staminaRegen * (this.herdBond ? 1.6 : 1) * dt);

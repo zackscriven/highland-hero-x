@@ -7,6 +7,7 @@ import { NAMES } from '../data/constants.js';
 import { Charm } from '../entities/Charm.js';
 import { unlockSkin } from '../core/save.js';
 import { dist2 } from '../core/math.js';
+import { audio } from './Audio.js';
 
 const PICKUP_RADIUS = 2.4;
 
@@ -61,6 +62,7 @@ export class Quest {
     this.effects.burst(charm.position, def.color, { count: 40, speed: 9, life: 1.2, up: 7 });
     this.effects.burst(charm.position, 0xffffff, { count: 14, speed: 4, life: 0.9, up: 5 });
     this.effects.ring(charm.position, def.color, { radius: 9, duration: 0.7 });
+    audio.play('charm');
 
     // Rewards go to everyone — teamwork!
     const lines = [`${def.name} recovered!`];
@@ -85,6 +87,7 @@ export class Quest {
     if (!this.gateOpen && this.count >= GATE_CHARMS_REQUIRED) {
       this.gateOpen = true;
       this.world.openGate();
+      setTimeout(() => audio.play('gate'), 600);
       lines.push(`The Thorn Gate to ${NAMES.arena} has opened!`);
       this.onEvent('gateOpen');
     }

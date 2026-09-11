@@ -1,6 +1,7 @@
 // Local co-op glue: Herd Bond (stick together → tougher + faster stamina) and
 // nuzzle revives (stand beside a knocked-out friend to help them up).
 import { dist2 } from '../core/math.js';
+import { audio } from './Audio.js';
 
 const BOND_RANGE = 9;
 const NUZZLE_RANGE = 3.0;
@@ -26,7 +27,7 @@ export class Coop {
         pl.cow.herdBond = bonded;
         this.hud.setBond(pl.cow.index, bonded);
       }
-      if (bonded) for (const pl of players) this.hud.toast(pl.cow.index, 'Herd Bond! 💞', '#ffb3c8');
+      if (bonded) { audio.play('bond'); for (const pl of players) this.hud.toast(pl.cow.index, 'Herd Bond! 💞', '#ffb3c8'); }
     }
 
     // ── Nuzzle revive ──
@@ -43,6 +44,7 @@ export class Coop {
         if (cow.nuzzle >= NUZZLE_SECONDS) {
           cow.revive(0.5);
           cow.nuzzle = 0;
+          audio.play('revive');
           this.effects.burst(cow.position, 0xffb3c8, { count: 30, speed: 5, life: 1.2, up: 7 });
           this.effects.ring(cow.position, 0xffb3c8, { radius: 4, duration: 0.5 });
           this.hud.toast(cow.index, `${friend.cow.name} nuzzled you back up! 💕`, '#ffb3c8');

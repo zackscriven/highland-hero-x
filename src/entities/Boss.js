@@ -94,6 +94,7 @@ export class Boss {
       for (const pl of ctx.players) {
         if (!pl.cow.isDown && dist2(pl.cow.x, pl.cow.z, this.arena.x, this.arena.z) < (this.arena.r - 2) ** 2) { this.wake(); break; }
       }
+      this._pushCows(ctx);
       this._animate(dt, 0);
       return;
     }
@@ -184,16 +185,20 @@ export class Boss {
     p.x += this.velocity.x * dt; p.z += this.velocity.z * dt;
     this.velocity.multiplyScalar(Math.exp(-6 * dt));
 
-    const dxA = p.x - this.arena.x, dzA = p.z - this.arena.z, dA = Math.hypot(dxA, dzA), maxR = this.arena.r - 2;
+    const dxA = p.x - this.arena.x, dzA = p.z - this.arena.z, dA = Math.hypot(dxA, dzA), maxR = this.arena.r - 5;
     if (dA > maxR) { p.x = this.arena.x + (dxA / dA) * maxR; p.z = this.arena.z + (dzA / dA) * maxR; }
 
-    // Push cows out of the boss's body so nobody clips through it.
+    this._pushCows(ctx);
+    this._animate(dt, speed);
+  }
+
+  // Push cows out of the boss's body so nobody clips through it.
+  _pushCows(ctx) {
+    const p = this.group.position;
     for (const pl of ctx.players) {
       const c = pl.cow, r = this.radius + c.radius, d2 = dist2(p.x, p.z, c.x, c.z);
       if (d2 < r * r && d2 > 0.0001) { const d = Math.sqrt(d2), push = (r - d); c.position.x += ((c.x - p.x) / d) * push; c.position.z += ((c.z - p.z) / d) * push; }
     }
-
-    this._animate(dt, speed);
   }
 
   _hitPlayer(pl, damage, knock, ctx) {
