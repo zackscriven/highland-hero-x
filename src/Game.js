@@ -11,6 +11,10 @@ import { Hud } from './ui/Hud.js';
 import { Menus } from './ui/Menus.js';
 import { Effects } from './systems/Effects.js';
 import { Quest } from './systems/Quest.js';
+import { AbilityController } from './systems/Abilities.js';
+import { Enemies } from './systems/Enemies.js';
+import { Hazards } from './systems/Hazards.js';
+import { Pickups } from './systems/Pickups.js';
 import { getSkin } from './data/skins.js';
 import { ZONES } from './data/zones.js';
 import { NAMES } from './data/constants.js';
@@ -34,8 +38,13 @@ export class Game {
     });
 
     this.cows = [];
+    this.players = [];   // [{ cow, abilities }]
     this.viewports = [];
     this.quest = null;
+    this.enemies = null;
+    this.hazards = null;
+    this.pickups = null;
+    this.boss = null;
     this.state = 'title';
     this.time = 0;
     this.lastConfig = { players: [{ skinId: 'classic', name: 'Player 1' }] };
@@ -86,10 +95,22 @@ export class Game {
 
     this.engine.setViewports(this.viewports);
     this.hud.setPlayers(this.cows, this.viewports);
+    for (const cow of this.cows) {
+      const k = (a) => `<b>${cow.input.label(a)}</b>`;
+      this.hud.setHint(cow.index, `Move ${k('up')}${k('left')}${k('down')}${k('right')} · Sprint ${k('sprint')} · Headbutt ${k('headbutt')} · Charge ${k('charge')} · Shield ${k('shield')} · Moo ${k('moo')} · Grass ${k('grass')}`);
+    }
     this.quest = new Quest({
       world: this.world, scene: this.engine.scene, effects: this.effects, hud: this.hud,
       onEvent: (type, data) => this._onQuestEvent(type, data),
     });
+    this.players = this.cows.map((cow) => ({
+      cow,
+      abilities: new AbilityController(cow, { effects: this.effects, hud: this.hud, world: this.world }),
+    }));
+    this.enemies = new Enemies({ scene: this.engine.scene, world: this.world, effects: this.effects, quest: this.quest });
+    this.enemies.onDeath = (e) => { if (Math.random() < 0.45) this.pickups.drop(e.x, e.z); };
+    this.hazards = new Hazards({ world: this.world, effects: this.effects, hud: this.hud });
+    this.pickups = new Pickups({ scene: this.engine.scene, world: this.world, effects: this.effects, hud: this.hud });
     this.menus.hide();
     this.keyboard.clear();
     this.state = 'playing';
@@ -99,9 +120,15 @@ export class Game {
   _teardownRun() {
     for (const c of this.cows) c.dispose();
     this.cows = [];
+    this.players = [];
     this.viewports = [];
     this.quest?.dispose();
     this.quest = null;
+    this.enemies?.dispose();
+    this.enemies = null;
+    this.pickups?.dispose();
+    this.pickups = null;
+    this.hazards = null;
     this.hud.clear();
   }
 
@@ -169,6 +196,7 @@ export class Game {
       this._updateViewports(dt);
       this.effects.update(dt);
       for (const cow of this.cows) cow.update(dt, this.world);
+      if (this.state === 'lost') this.enemies?.update(dt, this._frameContext(dt));
     }
 
     this.engine.render();
@@ -178,13 +206,47 @@ export class Game {
 
   _updatePlaying(dt) {
     this.runTime += dt;
+    const ctx = this._frameContext(dt);
     for (const cow of this.cows) cow.update(dt, this.world);
+    for (const pl of this.players) pl.abilities.update(dt, ctx);
+    this.enemies.update(dt, ctx);
+    this.hazards.update(dt, this.players);
+    this.pickups.update(dt, this.players);
     this.quest?.update(dt, this.cows);
+    this._updateArena();
     this.effects.update(dt);
     this._updateViewports(dt);
     this._updateCompass();
     this._updateDowned(dt);
     this.hud.update(dt);
+  }
+
+  // Everything systems need to talk to each other this frame.
+  _frameContext(dt) {
+    const targets = this.enemies ? this.enemies.list : [];
+    if (this.boss && !this.boss.dead) targets.push(this.boss);
+    return {
+      dt,
+      world: this.world,
+      effects: this.effects,
+      hud: this.hud,
+      players: this.players,
+      enemies: this.enemies ? this.enemies.list : [],
+      targets,
+      boss: this.boss,
+      shake: (index, amount) => { const vp = this.viewports[index]; if (vp) vp.shake = Math.max(vp.shake, amount); },
+      onPlayerHit: (pl, dealt) => { this.viewports[pl.cow.index].shake = Math.max(this.viewports[pl.cow.index].shake, 0.3 + dealt * 0.02); },
+      onRevive: () => {},
+    };
+  }
+
+  // Until the boss arrives (Phase 6), stepping into the ring reveals the last charm.
+  _updateArena() {
+    if (this.boss || !this.quest || this.quest.bossDefeated || !this.quest.gateOpen) return;
+    const a = this.world.arena;
+    for (const cow of this.cows) {
+      if (Math.hypot(cow.x - a.x, cow.z - a.z) < a.r) { this.quest.revealBossCharm(); break; }
+    }
   }
 
   _updateViewports(dt) {

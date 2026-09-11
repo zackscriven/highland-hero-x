@@ -13,6 +13,8 @@ export class CowMesh {
     this.mats.eye.emissive = new THREE.Color(0x000000);
     this.legs = [];
     this.features = { eyeScale: 1, ...features };
+    this.nod = 0;        // extra head pitch (headbutt animation), set by AbilityController
+    this.mooPulse = 0;   // head scale pulse for Moo Blast
     this._build();
   }
 
@@ -45,8 +47,10 @@ export class CowMesh {
     this.bodyGroup.rotation.z = Math.sin(phase) * 0.035 * moveBlend;
     const breathe = 1 + Math.sin(t * 2.2) * 0.012;
     this.bodyGroup.scale.set(1, breathe, 1);
-    this.head.rotation.x = Math.sin(phase * 0.5) * 0.06 * moveBlend - 0.02;
+    this.head.rotation.x = Math.sin(phase * 0.5) * 0.06 * moveBlend - 0.02 + this.nod;
     this.head.position.y = 1.22 + bob * 0.5;
+    const ms = 1 + this.mooPulse * 0.35;
+    this.head.scale.set(ms, ms, ms);
     this.tail.rotation.y = Math.sin(t * 3.1) * 0.35 + Math.sin(t * 7.3) * 0.08;
   }
 

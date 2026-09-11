@@ -378,6 +378,7 @@ export class World {
       const bush = P.makeThornBush(x, z, { rng });
       bush.scale.setScalar(1.35);
       bush.collider.r = 2.0;
+      bush.hazard.r = 2.6;
       this._add(bush);
     }
     // Gate: two thorn doors that vanish when enough charms are recovered.
@@ -404,7 +405,7 @@ export class World {
     const oldTree = P.makeDeadTree(ax, az - 26, { scale: 2.6, rng });
     this._add(oldTree);
 
-    this._add(P.makeMoon(30, 80, -240));
+    this._add(P.makeMoon(34, 92, -300));
     const glow = new THREE.PointLight(0xa090ff, 70, 70, 1.6);
     glow.position.set(ax, 9, az);
     this.root.add(glow);
