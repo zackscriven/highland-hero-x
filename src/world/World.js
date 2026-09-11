@@ -97,6 +97,12 @@ export class World {
     return { x, z };
   }
 
+  resetGate() {
+    this.gate.open = false;
+    for (const o of this.gate.obstacles) o.disabled = false;
+    for (const m of this.gate.meshes) m.visible = true;
+  }
+
   openGate() {
     if (this.gate.open) return;
     this.gate.open = true;

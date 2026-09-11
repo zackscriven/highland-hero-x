@@ -1,4 +1,5 @@
-// Orchestrates everything: engine, world, players, viewports, HUD, menus, and the game state machine.
+// Orchestrates everything: engine, world, players, viewports, systems, HUD, menus,
+// and the game state machine (title → playing ⇄ paused → won / lost).
 import * as THREE from 'three';
 import { Engine } from './core/Engine.js';
 import { Keyboard } from './core/Keyboard.js';
@@ -8,8 +9,13 @@ import { World } from './world/World.js';
 import { Cow } from './entities/Cow.js';
 import { Hud } from './ui/Hud.js';
 import { Menus } from './ui/Menus.js';
+import { Effects } from './systems/Effects.js';
+import { Quest } from './systems/Quest.js';
 import { getSkin } from './data/skins.js';
 import { ZONES } from './data/zones.js';
+import { NAMES } from './data/constants.js';
+
+const DOWN_GAME_OVER_DELAY = 3.0; // seconds a solo cow can stay knocked out before the run ends
 
 export class Game {
   constructor(appEl) {
@@ -18,17 +24,21 @@ export class Game {
     this.engine = new Engine(this.canvas);
     this.keyboard = new Keyboard();
     this.world = new World(this.engine.scene);
+    this.effects = new Effects(this.engine.scene);
     this.hud = new Hud(appEl.querySelector('#hud-root'));
     this.menus = new Menus(appEl.querySelector('#menu-root'), {
       onPlay: () => this.startRun({ players: [{ skinId: 'classic', name: 'Player 1' }] }),
       onResume: () => this.resume(),
       onQuit: () => this.quitToTitle(),
+      onRestart: () => this.startRun(this.lastConfig),
     });
 
     this.cows = [];
     this.viewports = [];
+    this.quest = null;
     this.state = 'title';
     this.time = 0;
+    this.lastConfig = { players: [{ skinId: 'classic', name: 'Player 1' }] };
     this.clock = new THREE.Clock();
 
     // Title screen shows the meadow with a slow camera orbit.
@@ -46,11 +56,14 @@ export class Game {
 
   // ── Run lifecycle ─────────────────────────────────────────────────────
 
-  startRun({ players }) {
-    for (const c of this.cows) c.dispose();
-    this.cows = [];
-    this.viewports = [];
+  startRun(config) {
+    this.lastConfig = config;
+    this._teardownRun();
+    this.world.setVividness(0);
+    this.world.setRestoration(0);
+    this.world.resetGate?.();
 
+    const players = config.players;
     const two = players.length === 2;
     players.forEach((p, i) => {
       const bindings = two ? (i === 0 ? P1_BINDINGS : P2_BINDINGS) : SOLO_BINDINGS;
@@ -73,9 +86,23 @@ export class Game {
 
     this.engine.setViewports(this.viewports);
     this.hud.setPlayers(this.cows, this.viewports);
+    this.quest = new Quest({
+      world: this.world, scene: this.engine.scene, effects: this.effects, hud: this.hud,
+      onEvent: (type, data) => this._onQuestEvent(type, data),
+    });
     this.menus.hide();
     this.keyboard.clear();
     this.state = 'playing';
+    this.runTime = 0;
+  }
+
+  _teardownRun() {
+    for (const c of this.cows) c.dispose();
+    this.cows = [];
+    this.viewports = [];
+    this.quest?.dispose();
+    this.quest = null;
+    this.hud.clear();
   }
 
   pause() {
@@ -92,13 +119,36 @@ export class Game {
   }
 
   quitToTitle() {
-    for (const c of this.cows) c.dispose();
-    this.cows = [];
-    this.viewports = [];
-    this.hud.clear();
+    this._teardownRun();
     this.engine.setViewports([this.titleViewport]);
     this.state = 'title';
     this.menus.showTitle();
+  }
+
+  win() {
+    if (this.state !== 'playing') return;
+    this.state = 'won';
+    this.world.setVividness(1);
+    this.world.setRestoration(1);
+    for (const c of this.cows) this.effects.burst(c.position, 0xffe08a, { count: 60, speed: 8, life: 1.6, up: 9 });
+    setTimeout(() => this.menus.showWin({ players: this.cows.length }), 1400);
+  }
+
+  lose() {
+    if (this.state !== 'playing') return;
+    this.state = 'lost';
+    setTimeout(() => this.menus.showLose(), 900);
+  }
+
+  _onQuestEvent(type, data) {
+    if (type === 'win') this.win();
+    if (type === 'gateOpen') {
+      for (const vp of this.viewports) vp.shake = 0.6;
+    }
+    if (type === 'charm') {
+      for (const i in this.cows) this.hud.refreshAbilities(Number(i));
+      this.viewports[data.cow.index].shake = 0.35;
+    }
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────
@@ -109,13 +159,16 @@ export class Game {
 
     if (this.state === 'title') {
       this.titleViewport.orbit(this.time, this.world.spawn, 30);
-      this.titleViewport.update(dt, this.world.spawn, null);
-      this.titleViewport.orbit(this.time, this.world.spawn, 30);
     } else if (this.state === 'playing') {
       this._updatePlaying(dt);
       if (this.keyboard.wasPressed('Escape')) this.pause();
     } else if (this.state === 'paused') {
       if (this.keyboard.wasPressed('Escape')) this.resume();
+    } else if (this.state === 'won' || this.state === 'lost') {
+      // Keep the world alive behind the end screen.
+      this._updateViewports(dt);
+      this.effects.update(dt);
+      for (const cow of this.cows) cow.update(dt, this.world);
     }
 
     this.engine.render();
@@ -124,13 +177,46 @@ export class Game {
   }
 
   _updatePlaying(dt) {
+    this.runTime += dt;
+    for (const cow of this.cows) cow.update(dt, this.world);
+    this.quest?.update(dt, this.cows);
+    this.effects.update(dt);
+    this._updateViewports(dt);
+    this._updateCompass();
+    this._updateDowned(dt);
+    this.hud.update(dt);
+  }
+
+  _updateViewports(dt) {
     for (let i = 0; i < this.cows.length; i++) {
       const cow = this.cows[i];
-      cow.update(dt, this.world);
       const vp = this.viewports[i];
       vp.update(dt, cow.position, cow.moveBlend > 0.2 ? cow.forward() : null);
       if (cow.zone) vp.setAtmosphere(cow.zone.atmo);
     }
-    this.hud.update(dt);
+  }
+
+  _updateCompass() {
+    if (!this.quest) return;
+    for (const cow of this.cows) {
+      const near = this.quest.nearest(cow.x, cow.z);
+      if (!near) { this.hud.setCompass(cow.index, null); continue; }
+      const dx = near.charm.position.x - cow.x, dz = near.charm.position.z - cow.z;
+      // Screen-space: north (-Z) is up. atan2(dx, -dz) → 0 = up, clockwise positive.
+      this.hud.setCompass(cow.index, { angle: Math.atan2(dx, -dz), dist: near.dist, label: near.charm.def.name });
+    }
+  }
+
+  _updateDowned(dt) {
+    const allDown = this.cows.every((c) => c.isDown);
+    for (const cow of this.cows) {
+      if (!cow.isDown) { this.hud.setDowned(cow.index, null); continue; }
+      const solo = this.cows.length === 1;
+      const left = Math.max(0, DOWN_GAME_OVER_DELAY - cow.downTimer);
+      this.hud.setDowned(cow.index, solo || allDown
+        ? `Knocked out!<small>${left.toFixed(0)}…</small>`
+        : `Knocked out!<small>Your friend can nuzzle you back up.</small>`);
+    }
+    if (allDown && this.cows.every((c) => c.downTimer >= DOWN_GAME_OVER_DELAY)) this.lose();
   }
 }

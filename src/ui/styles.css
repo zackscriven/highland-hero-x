@@ -124,3 +124,37 @@ kbd {
   font-family: var(--font); font-weight: 800; font-size: 12px; background: var(--cream); color: var(--wood-dark);
   border-radius: 6px; padding: 1px 6px; box-shadow: 0 2px 0 #b8a27e; margin-right: 2px;
 }
+
+/* ── Quest tracker (shared, top centre) ───────────────────────────────── */
+.hud-quest {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(59, 42, 26, 0.82); border: 3px solid var(--charm); border-radius: 16px;
+  padding: 8px 16px; text-align: center; box-shadow: var(--shadow); min-width: 300px; max-width: 46vw;
+  transition: transform 0.2s ease;
+}
+.hud-quest.pulse { transform: translateX(-50%) scale(1.06); }
+.q-title { font-weight: 900; font-size: 15px; color: var(--charm); letter-spacing: 0.3px; }
+.q-gems { display: flex; justify-content: center; gap: 6px; margin: 6px 0 4px; }
+.gem {
+  width: 16px; height: 16px; transform: rotate(45deg); border-radius: 3px;
+  background: rgba(0,0,0,0.35); border: 2px solid rgba(255, 244, 220, 0.35);
+}
+.gem.got { background: var(--gem); border-color: #fff; box-shadow: 0 0 10px var(--gem); }
+.q-hint { font-size: 12px; font-weight: 600; opacity: 0.9; }
+
+/* ── Ability slots ────────────────────────────────────────────────────── */
+.hud-abilities { display: flex; gap: 5px; margin-top: 8px; }
+.slot {
+  position: relative; width: 36px; height: 38px; border-radius: 9px; overflow: hidden;
+  background: rgba(255, 244, 220, 0.16); border: 2px solid rgba(255, 244, 220, 0.6);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 15px;
+}
+.slot .slot-key { font-size: 9px; font-weight: 800; line-height: 1; margin-top: 1px; }
+.slot.locked { opacity: 0.32; filter: grayscale(1); }
+.slot.locked .slot-icon::after { content: '🔒'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.slot.active { border-color: var(--charm); box-shadow: 0 0 10px var(--charm); }
+.slot .cd { position: absolute; left: 0; right: 0; bottom: 0; top: 0; background: rgba(0,0,0,0.55); transform-origin: bottom; transform: scaleY(0); pointer-events: none; }
+
+/* ── Compass ──────────────────────────────────────────────────────────── */
+.hud-compass { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 800; }
+.hud-compass .arrow { display: inline-block; font-size: 18px; color: var(--charm); transition: transform 0.15s linear; }

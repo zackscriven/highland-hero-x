@@ -68,4 +68,38 @@ export class Menus {
     el.querySelector('[data-action="resume"]').addEventListener('click', () => this.h.onResume?.());
     el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
   }
+
+  showWin({ players = 1 } = {}) {
+    const el = this._show('win', `
+      <div class="screen">
+        <div class="title-card">
+          <h2 class="screen-title">You saved the grasslands! 🌈</h2>
+          <p class="subtitle">Every Highland Charm is home. The colour is back, the wolves are gone, and ${players === 2 ? 'two heroes' : 'a hero'} will be sung about for a hundred summers.</p>
+          <div class="btn-row">
+            <button class="btn" data-action="again">Play Again</button>
+            <button class="btn ghost" data-action="quit">Back to Title</button>
+          </div>
+        </div>
+      </div>
+    `);
+    el.querySelector('[data-action="again"]').addEventListener('click', () => this.h.onRestart?.());
+    el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
+  }
+
+  showLose() {
+    const el = this._show('lose', `
+      <div class="screen dim">
+        <div class="title-card">
+          <h2 class="screen-title">Wolf Hollow was too much this time…</h2>
+          <p class="subtitle">Every hero takes a tumble. Shake it off and try again!</p>
+          <div class="btn-row">
+            <button class="btn" data-action="again">Try Again</button>
+            <button class="btn ghost" data-action="quit">Back to Title</button>
+          </div>
+        </div>
+      </div>
+    `);
+    el.querySelector('[data-action="again"]').addEventListener('click', () => this.h.onRestart?.());
+    el.querySelector('[data-action="quit"]').addEventListener('click', () => this.h.onQuit?.());
+  }
 }

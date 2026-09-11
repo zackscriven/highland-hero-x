@@ -38,7 +38,17 @@ export class Cow {
     this.glowColor = 0xffffff;
     this.isDown = false;                 // knocked out (0 health)
     this.downTimer = 0;
+    this.abilities = new Set();          // unlocked ability ids (granted by the Quest system)
     this._fwd = { x: 0, z: -1 };
+  }
+
+  hasAbility(id) { return this.abilities.has(id); }
+
+  unlockAbility(id) {
+    const isNew = !this.abilities.has(id);
+    this.abilities.add(id);
+    if (isNew) this.flash(0xffe08a, 1.0);
+    return isNew;
   }
 
   get position() { return this.group.position; }
